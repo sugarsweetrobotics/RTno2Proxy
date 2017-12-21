@@ -10,8 +10,8 @@
 using namespace ssr;
 static std::string MSGHDR = "[RTnoProxy] ";
 
-RTnoProtocol::RTnoProtocol(RTnoRTObjectWrapper* pRTObject, Transport *pTransport) :
-  m_pTransport(pTransport),m_pRTObjectWrapper(pRTObject)
+RTnoProtocol::RTnoProtocol(RTnoRTObjectWrapper* pRTObject, SerialDevice *pSerial) :
+  m_Transport(pSerial),m_pRTObjectWrapper(pRTObject)
 {
 }
 
@@ -21,8 +21,8 @@ RTnoProtocol::~RTnoProtocol(void)
 
 RTnoPacket RTnoProtocol::waitCommand(const uint8_t command, const uint32_t wait_usec) {
   for(int i = 0;i < 10;i++) {
-    if(m_pTransport->isNew()) {
-      RTnoPacket pac = m_pTransport->receive(wait_usec);
+    if(m_Transport.isNew()) {
+      RTnoPacket pac = m_Transport.receive(wait_usec);
       if(pac.getInterface() == command) {
 	return pac;
       }
@@ -32,43 +32,50 @@ RTnoPacket RTnoProtocol::waitCommand(const uint8_t command, const uint32_t wait_
 }
 
 const RTnoProfile&  RTnoProtocol::getRTnoProfile(const uint32_t wait_usec) {
-  std::cout << MSGHDR << " - RTnoProtocol::getRTnoProfile() called." << std::endl;
+  dbg(" - RTnoProtocol::getRTnoProfile() called.");
   static const RTnoPacket cmd_packet(GET_PROFILE);
-  std::cout << MSGHDR << "    - Transfer Profile Request to Arduino." << std::endl;
-  m_pTransport->send(cmd_packet);
+  dbg(" -- Transfer Profile Request to Arduino.");
+  m_Transport.send(cmd_packet);
 
   int timeout_count = wait_usec/1000;
   while(1) {
-    if(!m_pTransport->isNew()) {
+    if(!m_Transport.isNew()) {
       coil::usleep(1000);
       if (--timeout_count < 0) {
+	dbg(" -- Error. Timeout.");
 	throw TimeOutException();
       }
       continue;
     }
 
-    RTnoPacket pac = m_pTransport->receive(wait_usec);
+    dbg(" -- Packet Received.");
+    RTnoPacket pac = m_Transport.receive(wait_usec);
     switch(pac.getInterface()) {
     case GET_PROFILE: // Return Code.
+      dbg(" --- Get Profile.");
       onGetProfile(pac);
       return m_Profile;
 
     case ADD_INPORT: 
+      dbg(" --- Add InPort.");
       onAddInPort(pac);
       break;
 
     case ADD_OUTPORT:
+      dbg(" --- Add OutPort.");
       onAddOutPort(pac);
       break;
 
     case PACKET_ERROR:
+      dbg(" --- Error Indicator Packet Received.");
       throw GetProfileException();
 	case PACKET_ERROR_CHECKSUM:
 	  throw ChecksumException();
 	case PACKET_ERROR_TIMEOUT:
+
 	  throw TimeoutException();
     default: 
-      std::cout << "Unknown Command (" << pac.getInterface() << ")" << std::endl;
+      std::cerr << "# Error. Unknown Command (" << pac.getInterface() << ")" << std::endl;
     }
   }
 }
@@ -76,7 +83,7 @@ const RTnoProfile&  RTnoProtocol::getRTnoProfile(const uint32_t wait_usec) {
 void RTnoProtocol::onGetProfile(const RTnoPacket& packet)
 {
   if (packet.getData()[0] != RTNO_OK) {
-    std::cout << "--RTnoProtocol::getRTnoProfile() Failed." << std::endl;
+    dbg("  --RTnoProtocol::getRTnoProfile() Failed.");
     throw GetProfileException();
   }
 }
@@ -98,35 +105,35 @@ void RTnoProtocol::onAddOutPort(const RTnoPacket& packet) {
 
 uint8_t RTnoProtocol::getRTnoStatus() {
   static const RTnoPacket cmd_packet(GET_STATUS);
-  m_pTransport->send(cmd_packet);
+  m_Transport.send(cmd_packet);
   RTnoPacket pac = waitCommand(GET_STATUS, 20*1000);
   return pac.getData()[0];
 }
 
 uint8_t RTnoProtocol::getRTnoExecutionContextType() {
   static const RTnoPacket cmd_packet(GET_CONTEXT);
-  m_pTransport->send(cmd_packet);
+  m_Transport.send(cmd_packet);
   RTnoPacket pac = waitCommand(GET_CONTEXT, 20*1000);
   return pac.getData()[0];
 }
 
 uint8_t RTnoProtocol::activate() {
   static const RTnoPacket cmd_packet(RTNO_ACTIVATE);
-  m_pTransport->send(cmd_packet);
+  m_Transport.send(cmd_packet);
   RTnoPacket pac = waitCommand(RTNO_ACTIVATE, 20*1000);
   return pac.getData()[0];
 }
 
 uint8_t RTnoProtocol::reset() {
   static const RTnoPacket cmd_packet(RTNO_RESET);
-  m_pTransport->send(cmd_packet);
+  m_Transport.send(cmd_packet);
   RTnoPacket pac = waitCommand(RTNO_RESET, 20*1000);
   return pac.getData()[0];
 }
 
 uint8_t RTnoProtocol::deactivate() {
   static const RTnoPacket cmd_packet(RTNO_DEACTIVATE);
-  m_pTransport->send(cmd_packet);
+  m_Transport.send(cmd_packet);
   RTnoPacket pac = waitCommand(RTNO_DEACTIVATE, 20*1000);
   return pac.getData()[0];
 }
@@ -139,14 +146,14 @@ uint8_t RTnoProtocol::sendData(const std::string& portName, const uint8_t* data,
   memcpy(buffer+2, portName.c_str(), namelen);
   memcpy(buffer+2+namelen, data, length);
   RTnoPacket packet(SEND_DATA, buffer, 2 + namelen + length);
-  m_pTransport->send(packet);
+  m_Transport.send(packet);
   return 0;
  }
 
 
 int32_t RTnoProtocol::sendExecuteTrigger(void) {
   static const RTnoPacket cmd_packet(RTNO_EXECUTE);
-  return m_pTransport->send(cmd_packet);
+  return m_Transport.send(cmd_packet);
 }
 
 void RTnoProtocol::receiveData(const uint8_t* data) 
@@ -169,9 +176,9 @@ void RTnoProtocol::handleReceivedPacket(const uint32_t wait_usec) {
 
   bool endFlag = false;
   while(!endFlag) {
-    if (m_pTransport->isNew()) {
+    if (m_Transport.isNew()) {
       try {
-	RTnoPacket pac = m_pTransport->receive(wait_usec);
+	RTnoPacket pac = m_Transport.receive(wait_usec);
 	switch(pac.getInterface()) {
 	case RECEIVE_DATA:
 	  //ReceiveData(packet_buffer);

@@ -66,7 +66,7 @@ namespace ssr {
 
   class RTnoProtocol {
   private:
-    Transport *m_pTransport;
+    Transport m_Transport;
     RTnoRTObjectWrapper *m_pRTObjectWrapper;
     RTnoProfile m_Profile;
 
@@ -74,7 +74,7 @@ namespace ssr {
   public:
     
   public:
-    RTnoProtocol(RTnoRTObjectWrapper *pRTObject, Transport* pTransport);
+    RTnoProtocol(RTnoRTObjectWrapper *pRTObject, SerialDevice* pSerial);
     virtual ~RTnoProtocol(void);
     
   public:

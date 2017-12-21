@@ -6,7 +6,6 @@
 
 #include "RTnoRTObjectWrapper.h"
 #include "RTnoProtocol.h"
-#include "Transport.h"
 #include "InPortWrapper.h"
 #include "RTnoBase.h"
 
@@ -14,91 +13,71 @@
 //using namespace net::ysuga;
 using namespace ssr;
 
-RTnoBase::RTnoBase(RTC::DataFlowComponentBase* pRTC, SerialDevice* pSerial) {
-  m_pRTC = pRTC;
-  m_pSerialDevice = pSerial;
-  m_pTransport = new Transport(m_pSerialDevice);
-  m_pRTObjectWrapper = new RTnoRTObjectWrapper(pRTC);
-  m_pProtocol = new RTnoProtocol(m_pRTObjectWrapper, m_pTransport);
+RTnoBase::RTnoBase(RTC::DataFlowComponentBase* pRTC, SerialDevice* pSerial) : 
+  m_RTObjectWrapper(pRTC), m_Protocol(&m_RTObjectWrapper, pSerial)
+{
 }
 
 
-RTnoBase::~RTnoBase()
-{
-  delete m_pProtocol;
-  delete m_pRTObjectWrapper;
-  delete m_pTransport;
+RTnoBase::~RTnoBase() {
 }
 
 static std::string MSGHDR = "[RTnoProxy] ";
 
-bool RTnoBase::initialize()
+void RTnoBase::initialize()
 {
-  try {
-    RTnoProfile profile = m_pProtocol->getRTnoProfile(10*1000*1000);
-
-  std::cout << MSGHDR << " - Parsing RTnoProfile." << std::endl;
+  dbg(" - RTnoBase.initialize() called.");
+  RTnoProfile profile = m_Protocol.getRTnoProfile(10*1000*1000);
+  
+  dbg(" -- Parsing RTnoProfile");
   PortList inPorts = profile.inPorts();
   for(PortListIterator it = inPorts.begin();it != inPorts.end();++it) {
-    std::cout << MSGHDR << " -- Adding InPort  (name=" << (*it).getPortName()
-	      << ", typeCode=" << (*it).getTypeCode() << ")\n";
-    m_pRTObjectWrapper->addInPort((*it));
+    dbg(" --- Adding InPort to ProxyRTC  (name=%s, typeCode=%c)", (*it).getPortName().c_str(), (*it).getTypeCode());
+    m_RTObjectWrapper.addInPort((*it));
   }
   PortList outPorts = profile.outPorts();
   for(PortListIterator it = outPorts.begin();it != outPorts.end();++it) {
-    std::cout << MSGHDR << " -- Adding OutPort (name=" << (*it).getPortName()
-	      << ", typeCode=" << (*it).getTypeCode() << ")\n";
-
-    m_pRTObjectWrapper->addOutPort((*it));
+    dbg(" --- Adding OutPort to ProxyRTC (name=%s, typeCode=%c)", (*it).getPortName().c_str(), (*it).getTypeCode());
+    m_RTObjectWrapper.addOutPort((*it));
   }
-  std::cout << MSGHDR << " - Success." << std::endl;
-  m_pProtocol->initialize();
-  std::cout << MSGHDR << " - onInitialized OK." << std::endl;
-  return true;
-  } catch (TimeOutException &e) {
-    std::cout << MSGHDR << " - TimeOutException" << std::endl;
-    return false;
-  }
-
+  dbg(" -- Success");
+  m_Protocol.initialize();
+  dbg(" -- onInitialized OK");
 }
 
 
 
 bool RTnoBase::activate()
 {
-  m_pProtocol->activate();
+  m_Protocol.activate();
   return true;
 }
 
 
 bool RTnoBase::deactivate()
 {
-  m_pProtocol->deactivate();
+  m_Protocol.deactivate();
   return true;
 }
 
 
 bool RTnoBase::execute()
 {
-  InPortMap* pInPortMap = m_pRTObjectWrapper->GetInPortMap();
+  InPortMap* pInPortMap = m_RTObjectWrapper.GetInPortMap();
   for(InPortMapIterator it = pInPortMap->begin();it != pInPortMap->end();++it) {
     std::string name = (*it).first;
     InPortWrapperBase* inPort = (*it).second;
 
     if(inPort->isNew()) {
-      std::cout << "-reading InPort:" << name << std::endl;
-      std::cout << "--received." << std::endl;
+      dbg(" - Reading InPort(name=%s)", name.c_str());
       unsigned char packet_buffer[MAX_PACKET_SIZE];
       int len = inPort->Read();
       inPort->Get(packet_buffer, len);
-      m_pProtocol->sendData(name.c_str(), packet_buffer, len * inPort->getTypeSizeInArduino());
+      dbg(" - Sending Data to RTno Device");
+      m_Protocol.sendData(name.c_str(), packet_buffer, len * inPort->getTypeSizeInArduino());
     }
   }
-
-
-  
-  m_pProtocol->handleReceivedPacket(RTNO_INFINITE);
-  
+  m_Protocol.handleReceivedPacket(RTNO_INFINITE);
   return true;
 }
 

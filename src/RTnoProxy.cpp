@@ -54,7 +54,8 @@ RTnoProxy::RTnoProxy(RTC::Manager* manager)
   //    m_doubleInIn("in", m_doubleIn), m_doubleOutOut("out", m_doubleOut)
     // </rtc-template>
 {
-
+  m_pRTno = NULL;
+  m_pSerialDevice = NULL;
 }
 
 /*!
@@ -71,94 +72,88 @@ static std::string MSGHDR = "[RTnoProxy] ";
 
 RTC::ReturnCode_t RTnoProxy::onInitialize()
 {
-	bindParameter("connectionType", m_connectionType, "serial");
-	bindParameter("ipAddress", m_ipAddress, "192.168.1.2");
-	bindParameter("portNumber", m_portNumber, "23");
-	bindParameter("comport", m_comport, "/dev/tty0");
-	bindParameter("baudrate", m_baudrate, "19200");
+  bindParameter("connectionType", m_connectionType, "serial");
+  bindParameter("ipAddress", m_ipAddress, "192.168.1.2");
+  bindParameter("portNumber", m_portNumber, "23");
+  bindParameter("comport", m_comport, "/dev/tty0");
+  bindParameter("baudrate", m_baudrate, "19200");
+  
+  
+  updateParameters("default");
+  dbg(" - Configuration Values");
+  dbg(" -- conf.default.connectionType:%s", m_connectionType.c_str());
+  try {
+    if (m_connectionType == "serial") {
+      dbg(" - Serial Port Connection is selected..");
+      dbg(" -- conf.default.comport :%s", m_comport.c_str());
+      dbg(" -- conf.default.baudrate:%d", m_baudrate);
+      m_pSerialDevice = new ssr::Serial(m_comport.c_str(), m_baudrate);
+    } else {
+      dbg(" - TCP Port Connection is required.");
+      dbg(" -- conf.default.portNumber:%d", m_portNumber);
+      dbg(" -- conf.default.ipAddress :%s", m_ipAddress.c_str());
+      m_pSerialDevice = new ssr::EtherTcp(m_ipAddress.c_str(), m_portNumber);
+    }
+  } catch (std::exception& e) {
+    dbg(" - Failed: %s", e.what());
+    dbg(" - INSTRUCTION:");
+    dbg(" -- This error is usucally caused by the misconfiguration of RTnoProxy.");
+    dbg(" -- Whan using RTnoProxy, default configuration modification is recommended.");
+    dbg(" -- Configuration Values can be modified with 'rtc.conf' file.");
+    dbg(" -- The file is usually placed in the 'current directory (program launched directory)'");
+    dbg(" -- Or, you can specify your own rtc.conf file with -f option.");
+    dbg(" -- Ex., $ RTnoProxyComp -f my_rtc_conf.conf");
+    dbg(" -- In rtc.conf file, RTC specific configuration file can be specified like...");
+    dbg(" -- Embed.RTnoProxy.config_file: RTnoProxy.conf");
+    dbg(" -- The above line specifies that the RTnoProxy is configured by RTnoProxy.conf file.");
+    dbg(" -- In the RTnoProxy.conf file, the configuration values are set like...");
+    dbg(" -- conf.default.connectionType: seiral");
+    dbg(" -- Please check the attached rtc.conf and RTnoProxy.conf files.");
+    dbg(" -- And please modify as your RTno fits to your environment.");
+    dbg(" -- ");
+    dbg(" -- But you can also enjoy RTno with dynamic configuration and launch.");
+    dbg(" -- Launch RT System Editor and configure the configuration of RTnoProxy and activate it.");
+    dbg(" -- After the activation, ports and values will be added if the configuration is proper.");
+    return RTC::RTC_OK;
+  }
 
+  
+  dbg(" - Starting RTnoProxy...");
+  m_pRTno = new ssr::RTnoBase(this, m_pSerialDevice);
 
-	updateParameters("default");
-	std::cout << MSGHDR << "Configuration Values" << std::endl;
-	std::cout << MSGHDR << " - conf.default.connectionType" << ":" << m_connectionType << std::endl;
-	if (m_connectionType == "serial") {
-	  std::cout << MSGHDR << " - Serial Port Connection" << std::endl;
-	  std::cout << MSGHDR << "    - conf.default.comport" << ":" << m_comport << std::endl;
-	  std::cout << MSGHDR << "    - conf.default.baudrate" << ":" << m_baudrate << std::endl;
-	} else {
-	  std::cout << MSGHDR << " - TCP Port Connection" << std::endl;
-	  std::cout << MSGHDR << "    - conf.default.portNumber" << ":" << m_portNumber << std::endl;
-	  std::cout << MSGHDR << "    - conf.default.ipAddress" << ":" << m_ipAddress << std::endl;
-	}
- 
-	// <rtc-template block="registration">
-	// Set InPort buffers
+  coil::TimeValue interval(0, 1000*1000);
+  dbg(" - Waiting for Startup the arduino...");
+  dbg(" - 3........");  coil::sleep(interval);
+  dbg(" - 2......");  coil::sleep(interval);
+  dbg(" - 1....");  coil::sleep(interval);
+  dbg(" - Go!");
+  dbg("");
+  dbg(" - Starting up onInitialize sequence.");
 
-
-	// Set OutPort buffer
-
-	// Set service provider to Ports
-
-	// Set service consumers to Ports
-
-	// Set CORBA Service Ports
-
-	// </rtc-template>
-
-	if(m_connectionType == "serial") {
-	  try {
-	    std::cout << MSGHDR << "Opening SerialPort(" << m_comport << ")....." << std::ends;
-	    m_pSerialDevice = new ssr::Serial(m_comport.c_str(), m_baudrate);
-	    std::cout << MSGHDR << "Opened." << std::endl;
-
-	  } catch (net::ysuga::ComOpenException & e) {
-	    std::cout << MSGHDR << "Failed (" << e.what() << ")" << std::endl;
-	    return RTC::RTC_ERROR;
-	  }
-	} else if(m_connectionType == "tcp") {
-	  try {
-	    std::cout << MSGHDR << "Connecting to " << m_ipAddress << ":" << m_portNumber << " with TCP" << std::ends;
-	    m_pSerialDevice = new ssr::EtherTcp(m_ipAddress.c_str(), m_portNumber);
-	    
-	  } catch (...) {
-	    std::cout << MSGHDR << "Failed" << std::endl;
-	    return RTC::RTC_ERROR;
-	  }
-
-	}
+  try {
+    m_pRTno->initialize();
+  } catch (std::exception& ex) {
+    dbg(" - ERROR: %s", ex.what());
+    dbg(" -- RTnoProxy failed to initialize RTno device connection.");
+    dbg(" -- ");
+    dbg(" -- But you can also enjoy RTno with dynamic configuration and launch.");
+    dbg(" -- Launch RT System Editor and configure the configuration of RTnoProxy and activate it.");
+    dbg(" -- After the activation, ports and values will be added if the configuration is proper.");
+    delete m_pSerialDevice;
+    delete m_pRTno;
+    return RTC::RTC_OK;
+  }
+  dbg(" - RTnoProxy is successfully initialized");
 	
-	m_pRTno = new ssr::RTnoBase(this, m_pSerialDevice);
-
-	coil::TimeValue interval(0, 1000*1000);
-	std::cout << MSGHDR << "Waiting for Startup the arduino...\n";
-	std::cout << MSGHDR << " - 3......" << std::endl;  coil::sleep(interval);
-	std::cout << MSGHDR << " - 2...."   << std::endl;  coil::sleep(interval);
-	std::cout << MSGHDR << " - 1.."     << std::endl;  coil::sleep(interval);
-	std::cout << MSGHDR << " - Go!"     << std::endl;
-
-	std::cout << MSGHDR << "Starting up onInitialize sequence." << std::endl;
-
-	try {
-	if (!m_pRTno->initialize()) {
-	  std::cout << MSGHDR << " - Arduino did not reply RTnoProfile request.\n"
-		    << " - Please check your Arduino Board is properly connected to your machine.\n"
-		    << " - Or, your RTnoProxy is correctly configured (see above message.)" << std::endl;
-	  return RTC::RTC_ERROR;
-	}
-	} catch (ssr::GetProfileException& ex) {
-		std::cout << MSGHDR << " - Arduino send ERROR_PACKET when getting RTnoProfile in onInitialize" << std::endl;
-		return RTC::RTC_OK;
-	}
-	std::cout << MSGHDR << "RTnoProxy is successfully initialized." << std::endl;
-
-	return RTC::RTC_OK;
+  return RTC::RTC_OK;
 }
 
 RTC::ReturnCode_t RTnoProxy::onFinalize()
 {
+  delete m_pSerialDevice;
   delete m_pRTno;
   m_pRTno = NULL;
-
+  m_pSerialDevice = NULL;
   return RTC::RTC_OK;
 }
 
@@ -180,27 +175,40 @@ RTC::ReturnCode_t RTnoProxy::onShutdown(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RTnoProxy::onActivated(RTC::UniqueId ec_id)
 {
-  if(!m_pRTno->activate()) {
+  try {
+    dbg(" - Activating RTno");
+    m_pRTno->activate();
+  } catch (std::exception& e) {
+    dbg(" - Activating RTno failed: %s", e.what());
     return RTC::RTC_ERROR;
   }
 
+  dbg(" - Successfully activated.");
   return RTC::RTC_OK;
 }
 
 
 RTC::ReturnCode_t RTnoProxy::onDeactivated(RTC::UniqueId ec_id)
 {
-  if(!m_pRTno->deactivate()) {
+  try {
+    dbg(" - Deactivating RTno");
+    m_pRTno->deactivate();
+  } catch (std::exception& e) {
+    dbg(" - Deactivagin RTno failed: %s", e.what());
     return RTC::RTC_ERROR;
   }
-
+  
+  dbg(" - Successfully deactivated.");
   return RTC::RTC_OK;
 }
 
 
 RTC::ReturnCode_t RTnoProxy::onExecute(RTC::UniqueId ec_id)
 {
-  if(!m_pRTno->execute()) {
+  try {
+    m_pRTno->execute();
+  } catch (std::exception& e) {
+    dbg(" - onExecute failed: %s", e.what());
     return RTC::RTC_ERROR;
   }
   return RTC::RTC_OK;
@@ -222,7 +230,10 @@ RTC::ReturnCode_t RTnoProxy::onError(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RTnoProxy::onReset(RTC::UniqueId ec_id)
 {
-  if(!m_pRTno->reset()) {
+  try {
+    m_pRTno->reset();
+  } catch (std::exception& e) {
+    dbg(" - onReset failed: %s", e.what());
     return RTC::RTC_ERROR;
   }
   return RTC::RTC_OK;

@@ -24,10 +24,14 @@ endif (DEFINED OPENRTM_LIBRARIES)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME})
+include_directories(${PROJECT_SOURCE_DIR}/libaqua/include)
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/idl)
 include_directories(${OPENRTM_INCLUDE_DIRS})
 include_directories(${OMNIORB_INCLUDE_DIRS})
+
+include_directories(${PROJECT_SOURCE_DIR}/libaqua)
+
 add_definitions(${OPENRTM_CFLAGS})
 add_definitions(${OMNIORB_CFLAGS})
 

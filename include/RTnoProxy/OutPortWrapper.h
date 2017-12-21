@@ -68,6 +68,7 @@ class OutPortWrapper : public OutPortWrapperBase {
     }else {
       m_Value.data = *data;
     }
+    setTimestamp<DataType>(m_Value);
     return ((RTC::OutPort<DataType>*)m_pPort)->write();
   }
 };
@@ -116,6 +117,7 @@ private:
       //for(unsigned int i = 0;i < m_Value.data.length();i++) {
       //}
     }
+    setTimestamp<DataType>(m_Value);
     return ((RTC::OutPort<DataType>*)m_pPort)->write();
   }
 };

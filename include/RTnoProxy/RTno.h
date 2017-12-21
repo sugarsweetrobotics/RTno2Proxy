@@ -1,17 +1,11 @@
 #pragma once
 
-#include "RTnoBase.h"
+#define DEBUG
 
-namespace ssr {
-
-  class RTno  : public RTnoBase {
-  private:
-
-
-  public:
-    RTno();
-
-    virtual RTno();
-
-  };
-};
+#ifdef DEBUG
+#include <stdio.h>
+#define dbg(fmt, ...) printf("[RTnoProxy]:" fmt "\n", ## __VA_ARGS__)
+#else
+#define dbg(...)
+#endif
+ 

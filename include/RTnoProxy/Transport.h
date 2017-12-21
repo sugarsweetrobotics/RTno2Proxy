@@ -29,6 +29,26 @@ namespace ssr {
     virtual const char* what() const throw() {return msg.c_str();}
   };
 
+  class ReadException : public std::exception {
+  private:
+    std::string msg;
+  public:
+  ReadException(std::string str = "") : msg("ReadException:" + str) {}
+    virtual ~ReadException() throw() {}
+
+    virtual const char* what() const throw() {return msg.c_str();}
+  };
+
+  class WriteException : public std::exception {
+  private:
+    std::string msg;
+  public:
+  WriteException(std::string str = "") : msg("WriteException:" + str) {}
+    virtual ~WriteException() throw() {}
+
+    virtual const char* what() const throw() {return msg.c_str();}
+  };
+
   class Transport {
   private:
     

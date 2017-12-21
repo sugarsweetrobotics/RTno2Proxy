@@ -64,7 +64,7 @@ namespace ssr {
       m_OutPorts.push_back(p);
     }
 
-    
+     
     const PortList& inPorts() {
       return m_InPorts;
     }
@@ -77,7 +77,8 @@ namespace ssr {
     void removeInPort(const char* portName) {
       for(std::list<PortProfile>::iterator it = m_InPorts.begin(); it != m_InPorts.end(); ++it) {
 	if((*it).getPortName() == portName) { 
-	  m_InPorts.remove((*it));
+	  //m_InPorts.remove((*it));
+	  m_InPorts.erase(it);
 	  return;
 	}
       }
@@ -86,7 +87,8 @@ namespace ssr {
     void removeOutPort(const char* portName) {
       for(std::list<PortProfile>::iterator it = m_OutPorts.begin(); it != m_OutPorts.end(); ++it) {
 	if((*it).getPortName() == portName) {
-	  m_OutPorts.remove((*it));
+	  m_OutPorts.erase(it);
+	  //m_OutPorts.remove((*it));
 	  return;
 	}
       }

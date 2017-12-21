@@ -1,15 +1,10 @@
 #pragma once
 
 #include "Thread.h"
+
 #include "RTnoProfile.h"
-
-namespace ssr {
-    class SerialDevice;
-    class RTnoRTObjectWrapper;
-    class Transport;
-    class RTnoProtocol;
-};
-
+#include "RTnoRTObjectWrapper.h"
+#include "RTnoProtocol.h"
 
 namespace RTC {
   class DataFlowComponentBase;
@@ -20,20 +15,16 @@ namespace ssr {
 
   class RTnoBase : public net::ysuga::Thread {
   private:
-    ssr::SerialDevice *m_pSerialDevice;
     ssr::RTnoProfile m_Profile;
-    ssr::RTnoRTObjectWrapper *m_pRTObjectWrapper;
-    ssr::Transport* m_pTransport;
-    ssr::RTnoProtocol* m_pProtocol;
-    RTC::DataFlowComponentBase* m_pRTC;
+    ssr::RTnoRTObjectWrapper m_RTObjectWrapper;
+    ssr::RTnoProtocol m_Protocol;
 
   public:
     RTnoBase(RTC::DataFlowComponentBase* pRTC, ssr::SerialDevice* pSerial);
-
     virtual ~RTnoBase();
 
-    
-    bool initialize();
+  public:    
+    void initialize();
 
     bool activate();
 

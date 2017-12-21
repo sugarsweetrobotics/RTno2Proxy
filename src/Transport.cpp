@@ -2,11 +2,12 @@
 #include "Transport.h"
 
 #include <iostream>
-#include <coil/Time.h>
-#include <coil/TimeMeasure.h>
+#include "Timer.h"
+//#include <coil/Time.h>
+//#include <coil/TimeMeasure.h>
 
 #define PACKET_WAITING_TIME 3000 // ms
-#define PACKET_SENDING_DELAY 100 // us
+#define PACKET_SENDING_DELAY 1 // ms
 #define PACKET_WAITING_DELAY 100 //us
 #define PACKET_WAITING_COUNT (PACKET_WAITING_TIME*1000/PACKET_WAITING_DELAY)
 
@@ -16,43 +17,41 @@ const uint32_t RTNO_INFINITE = 0xFFFFFFFF;
 
 using namespace ssr;
 
-Transport::Transport(SerialDevice* pSerialDevice)
-{
+Transport::Transport(SerialDevice* pSerialDevice) {
   m_pSerialDevice = pSerialDevice;
 }
 
-Transport::~Transport(void)
-{
-}
+Transport::~Transport(void) {}
 
-int32_t Transport::read(uint8_t* buffer, uint8_t size, uint32_t wait_usec) 
-{
-  if (size == 0) {
-    return 0;
-  }
+int32_t Transport::read(uint8_t* buffer, uint8_t size, uint32_t wait_usec) {
+  if (size == 0) { return 0; }
 
-  coil::TimeMeasure tm;
+  ssr::Timer tm;
   tm.tick();
   while(1) {
     if(m_pSerialDevice->getSizeInRxBuffer() >= size) {
       break;
     }
-    tm.tack();
-    coil::TimeValue tv = tm.interval();
-    if (tv.usec() > wait_usec && wait_usec != RTNO_INFINITE) {
-      return -TIMEOUT;
+    ssr::TimeSpec tv;
+    tm.tack(&tv);
+    if (tv.getUsec() > wait_usec && wait_usec != RTNO_INFINITE) {
+      throw TimeOutException("when Transport::read()");
     }
   }
-
-  m_pSerialDevice->read(buffer, size);
+  if (m_pSerialDevice->read(buffer, size) != size) {
+    throw ReadException("when Transport::read()");
+  }
   return size;
 }
 
 int32_t Transport::write(const uint8_t* buffer, const uint8_t size) 
 {
-  for(uint8_t i = 0;i < size;i++) {
-    m_pSerialDevice->write(buffer+i, 1);
-    coil::usleep(PACKET_SENDING_DELAY);
+  //for(uint8_t i = 0;i < size;i++) {
+  //    m_pSerialDevice->write(buffer+i, 1);
+  //}
+  //return size;
+  if (m_pSerialDevice->write(buffer, size) != size) { 
+    throw WriteException("when Transport::write()");
   }
   return size;
 }
@@ -60,11 +59,13 @@ int32_t Transport::write(const uint8_t* buffer, const uint8_t size)
 
 int Transport::send(const RTnoPacket& packet) {
   const uint8_t headers[2] = {0x0a, 0x0a};
-  write(headers, 2);
-  write(packet.serialize(), packet.getPacketLength());
-  uint8_t sum = packet.getSum();
-  write(&sum, 1);
-  return 0;
+  uint8_t* buffer = new uint8_t[2 + packet.getPacketLength() + 1];
+  buffer[0] = headers[0]; buffer[1] = headers[1];
+  memcpy(buffer+2, packet.serialize(), packet.getPacketLength());
+  buffer[2 + packet.getPacketLength() + 1 - 1] = packet.getSum();
+  write(buffer, 2 + packet.getPacketLength() + 1);
+  delete buffer;
+  return packet.getPacketLength()+2;
 }
 
 bool Transport::isNew(const uint32_t wait_usec) {
