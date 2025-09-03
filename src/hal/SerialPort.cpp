@@ -27,6 +27,8 @@
 
 #endif
 
+#include <thread>
+#include <chrono>
 #include "SerialPort.h"
 
 /* Header includeing division
@@ -80,11 +82,29 @@ SerialPort::SerialPort(const char* filename, const int baudrate)
   if((m_Fd = open(filename, O_RDWR /*| O_NOCTTY |O_NONBLOCK*/)) < 0) {
       throw ComOpenException();
     }
+
     struct termios tio;
+
     memset(&tio, 0, sizeof(tio));
+    tcgetattr(m_Fd, &tio);
     cfsetspeed(&tio, baudrate);
-    tio.c_cflag |= CS8 | CLOCAL | CREAD;
-    tcsetattr(m_Fd, TCSANOW, &tio);
+	tio.c_cflag = 0;
+	tio.c_cflag |= CS8 | CLOCAL | CREAD;
+	tio.c_cflag &= ~HUPCL;
+    //tcsetattr(m_Fd, TCSANOW, &tio);
+	tcsetattr(m_Fd, TCSAFLUSH, &tio);
+
+	// play with DTR
+int iFlags;
+// // // turn on DTR
+// iFlags = TIOCM_DTR;
+// ioctl(m_Fd, TIOCMBIS, &iFlags);
+
+// turn off DTR
+// iFlags = TIOCM_DTR;
+// ioctl(m_Fd, TIOCMBIC, &iFlags);
+
+
 #endif
 }
 
@@ -181,9 +201,15 @@ int SerialPort::write(const void* src, const unsigned int size)
 	return WrittenBytes;
 #else
 	int ret;
-	if((ret = ::write(m_Fd, src, size)) < 0) {
-		throw ComAccessException();
+	for (int i = 0;i < size;i++) {
+		if((ret = ::write(m_Fd, ((uint8_t*)src)+i, 1)) < 0) {
+	 		throw ComAccessException();
+		}
+		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
+	// if((ret = ::write(m_Fd, src, size)) < 0) {
+	// 	throw ComAccessException();
+	// }
 	return ret;
 #endif
 }

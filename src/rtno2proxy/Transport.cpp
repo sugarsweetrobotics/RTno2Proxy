@@ -16,8 +16,10 @@ const uint32_t RTNO_INFINITE = 0xFFFFFFFF;
 
 using namespace ssr;
 
-Transport::Transport(SerialDevice* pSerialDevice)
+Transport::Transport(SerialDevice* pSerialDevice): m_Logger(getLogger("Transport"))
 {
+  setLogLevel(&m_Logger, ssr::LOGLEVEL::WARN);
+  RTNO_TRACE(m_Logger, "Transport() called");
   m_pSerialDevice = pSerialDevice;
 }
 
@@ -27,6 +29,7 @@ Transport::~Transport(void)
 
 int32_t Transport::read(uint8_t* buffer, uint8_t size, uint32_t wait_usec) 
 {
+  RTNO_TRACE(m_Logger, "Transport::read() called");
   if (size == 0) {
     return 0;
   }
@@ -46,7 +49,9 @@ int32_t Transport::read(uint8_t* buffer, uint8_t size, uint32_t wait_usec)
 }
 
 int32_t Transport::write(const uint8_t* buffer, const uint8_t size) 
-{
+{  
+  RTNO_TRACE(m_Logger, "Transport::write() called");
+
   for(uint8_t i = 0;i < size;i++) {
     m_pSerialDevice->write(buffer+i, 1);
     std::this_thread::sleep_for(std::chrono::microseconds(PACKET_SENDING_DELAY));
@@ -56,22 +61,25 @@ int32_t Transport::write(const uint8_t* buffer, const uint8_t size)
 
 
 int Transport::send(const RTnoPacket& packet) {
-  std::cout << "[Transport.cpp] Transport::send()" << std::endl;
+  RTNO_TRACE(m_Logger, "Transport::send() called");
   const uint8_t headers[2] = {0x0a, 0x0a};
   write(headers, 2);
   write(packet.serialize(), packet.getPacketLength());
   uint8_t sum = packet.getSum();
   write(&sum, 1);
+  RTNO_TRACE(m_Logger, "Transport::send() exit");
   return 0;
 }
 
 bool Transport::isNew(const uint32_t wait_usec) {
+  RTNO_TRACE(m_Logger, "Transport::isNew() called");
 #ifdef DEBUG
   std::cout << "---Receiving Packet..." << std::endl;
 #endif
   uint8_t buf;
   while(1) {
     if (read(&buf, 1, wait_usec) < 0) {
+      RTNO_DEBUG(m_Logger, "Transport::isNew() exit with TIMEOUT");
       return false;
     }
     if(buf != 0x0a) {
@@ -79,6 +87,7 @@ bool Transport::isNew(const uint32_t wait_usec) {
     }
 
     if(read(&buf, 1, wait_usec) < 0) {
+      RTNO_DEBUG(m_Logger, "Transport::isNew() exit with TIMEOUT");
       return false;
     }
     if(buf == 0x0a) {
@@ -93,9 +102,10 @@ bool Transport::isNew(const uint32_t wait_usec) {
 
 RTnoPacket Transport::receive(const uint32_t wait_usec/*=RTNO_INFINITE*/)
 {
-  std::cout << "[Transport.cpp] Transport::receive()" << std::endl;
+  RTNO_TRACE(m_Logger, "receive() called");
   uint8_t header[PACKET_RECEIVE_HEADER_SIZE]; // header[0] : COMMAND, header[1]: RESULT, header[2] : length
   if(read(header, PACKET_RECEIVE_HEADER_SIZE, wait_usec) < 0) {
+    RTNO_WARN(m_Logger, "receive() exit with PACKET_RECEIVE_HEADER_SIZE");
     throw TimeOutException();
   }
 
@@ -107,6 +117,7 @@ RTnoPacket Transport::receive(const uint32_t wait_usec/*=RTNO_INFINITE*/)
 
   uint8_t data_buffer[256];
   if(read(data_buffer, header[2] , wait_usec) < 0) {
+    RTNO_WARN(m_Logger, "receive() exit with read data timeout");
     throw TimeOutException();
   }
   
@@ -119,16 +130,18 @@ RTnoPacket Transport::receive(const uint32_t wait_usec/*=RTNO_INFINITE*/)
   
   uint8_t buf;
   if(read(&buf, 1, wait_usec) < 0) {
+    RTNO_WARN(m_Logger, "receive() exit with read checksum timeout");
     throw TimeOutException();
   }
   
   
   if(sum != buf) {
-    std::cout << "--CheckSum Error. Packet Dump" << std::endl;
+    RTNO_ERROR(m_Logger, "receive() exit with checksum error.");
     packet.dump();
     //return -CHECKSUM_ERROR;
     throw CheckSumException();
   }
   
+  RTNO_TRACE(m_Logger, "receive() exit");
   return packet;
 }

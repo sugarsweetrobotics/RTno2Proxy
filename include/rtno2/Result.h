@@ -1,6 +1,10 @@
 #ifndef RESULT_HEADER_FILE_INCLUDED
 #define RESULT_HEADER_FILE_INCLUDED
 
+#include <optional>
+#include <string>
+#include <sstream>
+
 enum class RESULT : char {
   OK = '@',
   ERROR = 'x',
@@ -18,5 +22,43 @@ enum class RESULT : char {
   PACKET_HEADER_TIMEOUT = 'T',
   PACKET_BODY_TIMEOUT = 'U',
 };
+
+inline const std::string result_to_string(RESULT r) {
+  switch(r) {
+    case RESULT::OK: return "RESULT::OK";
+    case RESULT::ERROR: return "RESULT::ERROR";
+    case RESULT::NONE: return "RESULT::NONE";
+    case RESULT::TIMEOUT: return "RESULT::TIMEOUT";
+    case RESULT::DATA_TIMEOUT: return "RESULT::DATA_TIMEOUT";
+    case RESULT::CHECKSUM_ERROR: return "RESULT::CHECKSUM_ERROR";
+    case RESULT::NOT_AVAILABLE: return "RESULT::NOT_AVAILABLE";
+    case RESULT::INVALID_PRESTATE: return "RESULT::INVALID_PRESTATE";
+    case RESULT::INPORT_NOT_FOUND: return "RESULT::INPORT_NOT_FOUND";
+    case RESULT::OUTPORT_NOT_FOUND: return "RESULT::OUTPORT_NOT_FOUND";
+    case RESULT::OUTPORT_BUFFER_EMPTY: return "RESULT::OUTPORT_BUFFER_EMPTY";
+    case RESULT::PACKET_START_TIMEOUT: return "RESULT::PACKET_START_TIMEOUT";
+    case RESULT::PACKET_HEADER_TIMEOUT: return "RESULT::PACKET_BODY_TIMEOUT";
+    case RESULT::PACKET_BODY_TIMEOUT: return "RESULT::PACKET_BODY_TIMEOUT";
+    default: {
+      std::stringstream ss;
+      ss << "RESULT::UNKNOWN(" << (char)r << "/" << (int)r << ")";
+      return ss.str();
+    }
+  }
+}
+
+namespace ssr::rtno {
+
+  template<typename T>
+  class result_t {
+  public:
+    std::optional<T> value;
+    RESULT result;
+
+  public:
+    result_t(T&& t): value(t), result(RESULT::OK) {}
+    result_t(RESULT r): value(std::nullopt), result(r) {}
+  };
+}
 
 #endif 

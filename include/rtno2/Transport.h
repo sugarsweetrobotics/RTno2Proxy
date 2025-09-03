@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "RTnoPacket.h"
 #include "SerialDevice.h"
+#include "Logger.h"
 #include <string>
 #include <exception>
 
@@ -23,7 +24,7 @@ namespace ssr {
   private:
     std::string msg;
   public:
-  TimeOutException(std::string str = "") : msg("CheckSumException:" + str) {}
+  TimeOutException(std::string str = "") : msg("TimeoutException:" + str) {}
     virtual ~TimeOutException() throw() {}
 
     virtual const char* what() const throw() {return msg.c_str();}
@@ -35,6 +36,7 @@ namespace ssr {
   protected:
     SerialDevice *m_pSerialDevice;
     uint8_t m_SenderInfo[PACKET_SENDER_INFO_LENGTH];
+    RTnoLogger m_Logger;
   public:
     Transport(SerialDevice *pSerialDevice);
     ~Transport(void);

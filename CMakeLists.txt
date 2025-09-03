@@ -7,4 +7,6 @@ include_directories(include)
 include_directories(include/hal)
 include_directories(include/rtno2)
 
+include_directories(thirdparty/spdlog-1.15.3/include)
+
 add_subdirectory(src)

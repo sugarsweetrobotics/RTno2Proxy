@@ -20,7 +20,8 @@ namespace ssr {
     RESULT m_result;
   public:
     COMMAND getInterface() const {return (COMMAND)m_pData[0];}
-    RESULT getResult() const {return (RESULT)getData()[0];}
+    // RESULT getResult() const {return (RESULT)getData()[0];}
+    RESULT getResult() const { return m_result; }
     uint8_t getDataLength() const { return m_pData[1];}
     //uint8_t *getSenderInfo() {return m_pData + PACKET_HEADER_SIZE;}
     uint8_t getPacketLength() const { return PACKET_HEADER_SIZE + m_pData[1]; }
@@ -65,7 +66,7 @@ namespace ssr {
       initialize((uint8_t)command, data, size);
     }
     
-  RTnoPacket(const RTnoPacket& p) : m_pData(NULL) {
+  RTnoPacket(const RTnoPacket& p) : m_pData(NULL), m_result(p.m_result) {
       initialize((uint8_t)p.getInterface(),
 		 //p.getSenderInfo(), 
 		 p.getData(),
@@ -84,6 +85,12 @@ namespace ssr {
       
     ~RTnoPacket() {
       delete m_pData;
+    }
+
+    std::string to_string() const {
+      std::stringstream ss;
+      ss << "RTnoPacket(CMD=" << command_to_string(getInterface()) << ",RES=" << result_to_string(getResult()) << ")";
+      return ss.str();
     }
     
   public:

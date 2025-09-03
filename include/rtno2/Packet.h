@@ -37,11 +37,33 @@ enum class COMMAND : char {
   PACKET_ERROR = 'F',
   PACKET_ERROR_CHECKSUM = 'H',
   PACKET_ERROR_TIMEOUT = 'K',
-  // RECEIVE_DATA = 'V',
-
-  // INPORT_ISNEW = 'N',
-  // INPORT_READ  = 'J',
 };
+
+inline std::string command_to_string(COMMAND cmd) {
+  switch (cmd) {
+    case COMMAND::INITIALIZE: return "COMMAND::INITIALIZE";
+    case COMMAND::ACTIVATE: return "COMMAND::ACTIVATE";
+    case COMMAND::DEACTIVATE: return "COMMAND::DEACTIVATE";
+    case COMMAND::GET_STATE: return "COMMAND::GET_STATE";
+    case COMMAND::GET_CONTEXT_TYPE: return "COMMAND::GET_CONTEXT_TYPE";
+    case COMMAND::EXECUTE: return "COMMAND::EXECUTE";
+    case COMMAND::RESET: return "COMMAND::RESET";
+    case COMMAND::ONERROR: return "COMMAND::ONERROR";
+    case COMMAND::GET_PROFILE: return "COMMAND::GET_PROFILE";
+    case COMMAND::INPORT_PROFILE: return "COMMAND::OUTPORT_PROFILE";
+    case COMMAND::OUTPORT_PROFILE: return "COMMAND::OUTPORT_PROFILE";
+    case COMMAND::SEND_DATA: return "COMMAND::SEND_DATA";
+    case COMMAND::RECEIVE_DATA: return "COMMAND::RECEIVE_DATA";
+    case COMMAND::PACKET_ERROR: return "COMMAND::PACKET_ERROR";
+    case COMMAND::PACKET_ERROR_CHECKSUM: return "COMMAND::PACKET_ERROR_CHECKSUM";
+    case COMMAND::PACKET_ERROR_TIMEOUT: return "COMMAND::PACKET_ERROR_TIMEOUT";
+    default: {
+      std::stringstream ss;
+      ss << "COMMAND::UNKNOWN(" << (char)cmd << "/" << (int)cmd << ")";
+      return ss.str();
+    }
+  }
+}
 
 
 // // Interface
@@ -146,12 +168,17 @@ inline std::string typecode_to_str(char typecode) {
 #define ProxySynchronousExecutionContext 0x21
 #define Timer1ExecutionContext 0x22
 #define Timer2ExecutionContext 0x23
+#define FSPTimerExecutionContext 0x24
+
+#include <iostream>
 
 inline std::string ec_type_to_string(uint8_t ec_type) {
+  std::cout << "ec_type_to_string(" << (int)ec_type << ")" << std::endl;
   switch (ec_type) {
     case ProxySynchronousExecutionContext: return "ProxySynchronousExecutionContext";
     case Timer1ExecutionContext: return "Timer1ExecutionContext";
     case Timer2ExecutionContext: return "Timer2ExecutionContext";
+    case FSPTimerExecutionContext: return "FSPTimerExecutionContext";
     default: {
       std::stringstream ss;
       ss << "UnknownExecutionContext(" << (int)ec_type << ")";
