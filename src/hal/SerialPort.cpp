@@ -52,6 +52,10 @@ SerialPort::SerialPort(const char* filename, const int baudrate)
 		throw ComOpenException();
 	}
 
+	if (m_hComm == 0) {
+		throw ComOpenException();
+	}
+
 
 	if(!GetCommState (m_hComm, &dcb)) {
 		CloseHandle(m_hComm); m_hComm = 0;

@@ -1,4 +1,4 @@
-#include "rtno2/Logger.h"
+#include "rtno2/logger.h"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/basic_file_sink.h"
@@ -8,13 +8,13 @@
 #include <vector>
 
 
-using namespace ssr;
+using namespace ssr::rtno2;
 
 std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> console_sink;
 std::shared_ptr<spdlog::sinks::basic_file_sink_mt>   file_sink;
 std::vector<std::shared_ptr<spdlog::sinks::sink>> sink_list;
 
-void ssr::initLogger() {
+void ssr::rtno2::init_logger() {
     if (console_sink) {
         return;
     }
@@ -28,12 +28,12 @@ void ssr::initLogger() {
     sink_list = { file_sink, console_sink };
 }
 
-RTnoLogger ssr::getLogger(const std::string& name) {
-    initLogger();
+ssr::rtno2::logger_t ssr::rtno2::get_logger(const std::string& name) {
+    init_logger();
     auto logger = spdlog::logger(name, sink_list.begin(), sink_list.end());
     return logger;
 }
 
-void ssr::setLogLevel(RTnoLogger* logger, const ssr::LOGLEVEL level) {
+void ssr::rtno2::set_log_level(logger_t* logger, const ssr::rtno2::LOGLEVEL level) {
     logger->set_level((spdlog::level::level_enum)level);
 }
