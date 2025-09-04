@@ -26,9 +26,9 @@ namespace ssr::rtno2 {
 		RESULT send(const packet_t& packet);
 		result_t<packet_t> receive(const uint32_t wait_usec);
 
-		RESULT is_new(const uint32_t wait_usec = INFINITE);
+		RESULT is_new(const uint32_t wait_usec = 1000*1000);
 	private:
-		RESULT read(uint8_t* buffer, uint8_t size, const uint32_t wait_usec = INFINITE);
+		RESULT read(uint8_t* buffer, uint8_t size, const uint32_t wait_usec = 1000*1000);
 		RESULT write(const uint8_t* buffer, const uint8_t size);
 	};
 };

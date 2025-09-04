@@ -1,5 +1,5 @@
 
-#include "rtno2/Packet.h"
+#include "rtno2/packet.h"
 #include "rtno2/protocol.h"
 
 #include <chrono>

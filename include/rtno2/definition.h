@@ -3,7 +3,7 @@
 #include <string>
 #include <sstream>
 
-#include "Result.h"
+#include "result.h"
 
 // Communication Settings
 #define PACKET_WAITING_TIME 3000 // ms

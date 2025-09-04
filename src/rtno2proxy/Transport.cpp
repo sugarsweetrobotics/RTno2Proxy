@@ -1,4 +1,4 @@
-#include "Packet.h"
+#include "packet.h"
 #include "result.h"
 #include "transport.h"
 
@@ -38,7 +38,7 @@ RESULT transport_t::read(uint8_t* buffer, uint8_t size, uint32_t wait_usec) {
 			break;
 		}
 		auto duration = std::chrono::duration<double>(std::chrono::system_clock::now() - start_time).count();
-		if (duration * 1000000 > wait_usec && wait_usec != INFINITE) {
+		if (duration * 1000000 > wait_usec && wait_usec != UINT32_MAX) {
 			return RESULT::TIMEOUT;
 		}
 	}
