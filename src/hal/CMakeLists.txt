@@ -1,5 +1,5 @@
 set(rtno_hal_srcs 
-  EtherTCP.cpp
+  EtherTcp.cpp
   Serial.cpp
   SerialPort.cpp
   ServerSocket.cpp
