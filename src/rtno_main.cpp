@@ -1,5 +1,6 @@
 
 #include "hal/Serial.h"
+#include "hal/EtherTcp.h"
 #include "rtno2/protocol.h"
 #include "rtno2/logger.h"
 
@@ -158,6 +159,24 @@ RESULT inject(logger_t& logger, protocol_t& rtno, const std::string& name_str, c
 }
 
 
+ssr::SerialDevice *create_serial(const std::string& filename, const int int_arg) {
+    if (filename.substr(0, 6) == "tcp://") {
+        try {
+            return new ssr::EtherTcp(filename.substr(6).c_str(), int_arg);
+        } catch (ssr::SocketException& se) {
+            std::cerr << se.what() << std::endl;
+            return nullptr;
+        }
+    } else {
+        try {
+            return new ssr::Serial(filename.c_str(), int_arg);
+        } catch (net::ysuga::ComOpenException& ce) {
+            std::cout << ce.what() << std::endl;
+            return nullptr;
+        }
+    }
+}
+
 int do_main(logger_t& logger, protocol_t& rtno, const std::string& command, const std::vector<std::string>& args, const uint32_t wait_usec=1000*1000) {
     if (command == "getprofile") {
         auto prof = rtno.get_profile(wait_usec);
@@ -219,21 +238,72 @@ int do_interactive(logger_t& logger, protocol_t& rtno) {
     return 0;
 }
 
+void print_usage() {
+    std::cout << "> getprofile # Get RTCProfile from RTno" << std::endl;
+    std::cout << "> getstate.  # Get RTCState from RTno" << std::endl;
+    std::cout << "> getectype. # Get EC's type from RTno" << std::endl;
+    std::cout << "> activate   # Activate RTC" << std::endl;
+    std::cout << "> deactivate # Deactivate RTC" << std::endl;
+    std::cout << "> execute    # Execute RTC." << std::endl;
+    std::cout << "             # If RTno uses ProxySynchronousExecutionContext, " << std::endl;
+    std::cout << "             # This function sends an execute trigger to RTno." << std::endl;
+    std::cout << "             # Eventually, the RTno's 'on_execute' function is called once." << std::endl;
+    std::cout << "> print [PORT_NAME] # Print value of output buffer of RTno's outport" << std::endl;
+    std::cout << "             # Usually, output buffer is written in 'on_execute' function, so" << std::endl;
+    std::cout << "             # If 'print' function causes error, you might as well do 'execute'." << std::endl;
+    std::cout << "> inject [PORT_NAME] [VALUE]..." << std::endl;
+    std::cout << "             # This function send value to inport's input buffer." << std::endl;
+    std::cout << "             # [VALUE] is parsed according to the value type of InPort specified." << std::endl;
+    std::cout << "  ex: > inject in0 2     # Write single value 2. This will work for TimedLong, TimedFloat, and TimedDouble" << std::endl;
+    std::cout << "      > inject in0 2,3,4 # Write sequence value [2,3,4]. This will work for TimedLongSeq, TimedFloatSeq, and TimedDoubleSeq." << std::endl;
+    std::cout << "             # You can't put any while-space and any brackets nor parentheses in the array value." << std::endl;
+}
+
+void print_usage_whole_interactive() {
+    std::cout << "Usage:" << std::endl;
+    std::cout << " - If you have not opened device..." << std::endl;
+    std::cout << "> open [PORT_FILE_NAME] [PORT_ARGUMENT]" << std::endl;
+    std::cout << " ex: open COM3 57600 # for COM port in Windows OS." << std::endl;
+    std::cout << "     open /dev/ttyUSB0 57600 # for tty port in Linux/OSX" << std::endl;
+    std::cout << "     open tcp://192.168.1.1 12345 # for TCP port (addr 192.168.1.1, number 12345)" << std::endl;
+    std::cout << std::endl;
+    std::cout << " - If you are ready..." << std::endl;
+    print_usage();
+    std::cout << "> close.     # Close serial device." << std::endl;
+    std::cout << "> exit       # Exit this program" << std::endl;
+}
 int do_whole_interactive(logger_t& logger) {
-    ssr::Serial* serial_port = NULL;
+    ssr::SerialDevice* serial_port = NULL;
     protocol_t* rtno = NULL;
     while (true) {
-        std::cout << "> " << std::ends;
+        if (rtno) {
+            std::cout << "[opened]>" << std::ends;
+        } else {
+            std::cout << "[not opened]> " << std::ends;
+        }
         std::string commandline;
-        std::getline(std::cin, commandline);
+        if (!std::getline(std::cin, commandline)) {
+            return 0; // Ctrl+D
+        }
         auto elems = strsplit(commandline, ' ');
-        if (elems.size() == 0) continue;
-
+        if (elems.size() == 0) {
+            continue;
+        }
         if (elems[0] == "open") {
+            if (elems.size() < 3) {
+                std::cout << "ERROR. open need argument. type 'help' to get more info." << std::endl;
+                continue;
+            }
             std::string filename = elems[1];
             int baudrate = atoi(elems[2].c_str());
-            serial_port = new ssr::Serial(filename.c_str(), baudrate);
-            rtno = new protocol_t(serial_port);
+            serial_port = create_serial(filename.c_str(), baudrate);
+            if (serial_port) {
+                rtno = new protocol_t(serial_port);
+            }
+        }
+        else if (elems[0] == "close") {
+            delete rtno; rtno = nullptr;
+            delete serial_port; serial_port = nullptr;
         }
         else if (elems[0] == "exit") {
             delete rtno;
@@ -243,6 +313,9 @@ int do_whole_interactive(logger_t& logger) {
         else {
             if (serial_port) {
                 do_main(logger, *rtno, elems[0], elems);
+            } else {
+                std::cout << "ERROR: Port is not opened." << std::endl;
+                print_usage_whole_interactive();
             }
         }
     }
@@ -269,13 +342,19 @@ int main(const int argc, const char* argv[]) {
     auto filename = argv[1];
     int baudrate = atoi(argv[2]);
     std::string command = argv[3];
-    ssr::Serial serial_port(filename, baudrate);
-    protocol_t protocol_t(&serial_port);
 
+    auto serial_port = create_serial(filename, baudrate);
+    if (!serial_port) {
+        return -1;
+    }
+    auto protocol = new protocol_t(serial_port);
+    
     if (command == "interactive") {
-        do_interactive(logger, protocol_t);
+        do_interactive(logger, *protocol);
         return 0;
     }
-    do_main(logger, protocol_t, command, args);
+    do_main(logger, *protocol, command, args);
+    delete protocol;
+    delete serial_port;
     return 0;
 }

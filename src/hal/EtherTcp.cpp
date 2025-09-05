@@ -36,7 +36,7 @@ using namespace ssr;
 
 EtherTcp::EtherTcp(const char* ipAddress, int32_t port)
 {
-	m_pSocket = new net::ysuga::Socket(ipAddress, port);
+	m_pSocket = new ssr::Socket(ipAddress, port);
 	m_thread = std::thread( [this] {
 		this->svc();
 	});
@@ -98,7 +98,7 @@ RETVAL EtherTcp::getSizeInRxBuffer()
  */
 RETVAL EtherTcp::write(const uint8_t* src, const uint8_t size)
 {
-	return m_pSocket->send(src, size);
+	return m_pSocket->write(src, size);
 }
 
 /**
@@ -126,7 +126,7 @@ RETVAL EtherTcp::svc(void)
 	m_pSocket->setNonBlock(1);
 	while(!m_Endflag) {
 		uint8_t buf;
-		int32_t sz = m_pSocket->recv(&buf, 1);
+		int32_t sz = m_pSocket->read(&buf, 1);
 		if(sz == 1) {
 			buffer_push(buf);
 		}

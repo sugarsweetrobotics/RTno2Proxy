@@ -16,7 +16,7 @@ namespace ssr {
   class EtherTcp : public SerialDevice {
   private:
     int m_Endflag;
-    net::ysuga::Socket *m_pSocket;
+    ssr::Socket *m_pSocket;
     std::thread m_thread;
     
   public:
