@@ -10,10 +10,13 @@ else (WIN32)
 
 endif (WIN32)
 
-include_directories(include)
-include_directories(include/hal)
-include_directories(include/rtno2)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/hal)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/rtno2)
 
-include_directories(thirdparty/spdlog-1.15.3/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/spdlog-1.15.3/include)
+
+
+set(RTNO2PROXY_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include/hal ${CMAKE_CURRENT_SOURCE_DIR}/include/rtno2 ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/spdlog-1.15.3/include PARENT_SCOPE)
 
 add_subdirectory(src)
